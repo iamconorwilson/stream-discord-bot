@@ -22,7 +22,6 @@ CHANNELS_PATH=channels.json # Path to the channels file relative to the root dir
 [
     "user1",
     "user2"
-    //...
 ]
 ```
 4. Install and build the application with `npm install && npm run build`
