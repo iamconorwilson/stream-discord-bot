@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/app.js",
-    "dev": "tsc && cross-env NODE_ENV=development node dist/app.js"
+    "dev": "tsc && cross-env NODE_ENV=development node dist/app.js",
+    "format": "prettier --config .prettierrc ./src/**/*.ts --write"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +26,7 @@
   "devDependencies": {
     "@types/node": "^22.6.0",
     "cross-env": "^7.0.3",
+    "prettier": "^3.3.3",
     "typescript": "^5.6.2"
   }
 }
