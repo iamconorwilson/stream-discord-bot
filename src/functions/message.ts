@@ -24,7 +24,7 @@ const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
   const userThumbnail = broadcaster.profilePictureUrl;
 
   const message = {
-    content: `${username} just went live at ${streamUrl}!`,
+    content: `${username} just went live at [${streamUrl}](${streamUrl})!`,
     type: 'rich',
     tts: false,
     embeds: [
