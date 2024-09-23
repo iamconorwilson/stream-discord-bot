@@ -34,11 +34,13 @@ jobs:
           files: |
             dist/
             captain-definition
+            package.json
+            package-lock.json
           outPath: deploy.tar
 
       - name: Deploy App to CapRover
         uses: caprover/deploy-from-github@v1.0.1
         with:
-          server: '${{ secrets.CAPROVER_SERVER }}'
+          server: "${{ secrets.CAPROVER_SERVER }}"
           app: '${{ secrets.APP_NAME }}'
           token: '${{ secrets.APP_TOKEN }}'
