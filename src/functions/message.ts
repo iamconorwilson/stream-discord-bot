@@ -20,7 +20,8 @@ const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
   const streamUrl = `https://twitch.tv/${event.broadcasterName}`;
   const streamThumbnail = stream.thumbnailUrl
     .replace('{width}', '1280')
-    .replace('{height}', '720');
+    .replace('{height}', '720')
+    .concat(`?t=${Date.now()}`);
   const userThumbnail = broadcaster.profilePictureUrl;
 
   const message = {
