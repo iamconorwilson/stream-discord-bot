@@ -29,6 +29,8 @@ if (!existsSync(channelsPath)) {
 
 let channels: string[];
 
+let sentMessages: string[] = [];
+
 try {
   const parsedChannels = JSON.parse(readFileSync(channelsPath, 'utf-8'));
   if (
@@ -79,10 +81,21 @@ for (const channel of channels) {
   console.log(`Registering channel: ${channel} (${channelId})`);
 
   listener.onStreamOnline(channelId, async (event) => {
-    console.log(`Stream is online for ${event.broadcasterDisplayName}`);
+    if (sentMessages.includes(event.id)) {
+      console.log(`Message already sent for ${event.broadcasterDisplayName}`);
+      return;
+    }
+    console.log(`Stream is online for ${event.broadcasterDisplayName} - ${event.id}`);
     await sendWebhook(event);
+    sentMessages.push(event.id);
   });
 }
+
+//set timeout to clear sentMessages every 24 hours
+setInterval(() => {
+  console.log('Clearing sent messages');
+  sentMessages = [];
+}, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
 
 console.log('Listening for events');
 
