@@ -57,6 +57,10 @@ if (!authResult) {
 
 const { listener, apiClient } = authResult;
 
+//Delete any existing subscriptions
+console.log('Deleting any existing subscriptions');
+await apiClient.eventSub.deleteAllSubscriptions();
+
 console.log('Registering channels');
 
 for (const channel of channels) {
