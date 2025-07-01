@@ -6,12 +6,34 @@ import type { HelixStream, HelixUser } from '@twurple/api';
 
 const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getStreamWithRetry = async (
+  event: EventSubStreamOnlineEvent,
+  retries = 6,
+  delayMs = 5000
+): Promise<{ stream: HelixStream | null; broadcaster: HelixUser | null }> => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const stream = await event.getStream();
+    const broadcaster = await event.getBroadcaster();
+
+    if (stream && broadcaster) {
+      return { stream, broadcaster };
+    }
+    console.warn(
+      `Attempt ${attempt} of ${retries} failed to get stream for ${event.broadcasterDisplayName}. Retrying in ${delayMs / 1000} seconds...`
+    );
+    await delay(delayMs);
+  }
+  return { stream: null, broadcaster: null };
+}
+
+
 const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
   const username = event.broadcasterDisplayName;
-  const stream: HelixStream | null = await event.getStream();
-  const broadcaster: HelixUser = await event.getBroadcaster();
+  const { stream, broadcaster } = await getStreamWithRetry(event);
 
-  if (!stream) {
+  if (!stream || !broadcaster) {
     return console.error(`No stream found for ${username}`);
   }
 
