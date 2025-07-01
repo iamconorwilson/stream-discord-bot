@@ -5,20 +5,23 @@ import * as dotenv from 'dotenv';
 // FUNCTIONS
 import auth from './functions/auth.js';
 import sendWebhook from './functions/message.js';
-import { setCleanup, deleteAllSubscriptions } from './functions/cleanup.js';
+import { deleteAllSubscriptions } from './functions/cleanup.js';
 
 // TYPES
 import type { HelixUser } from '@twurple/api';
-import { EventSubStreamOnlineEvent } from '@twurple/eventsub-base';
+import type { EventSubStreamOnlineEvent } from '@twurple/eventsub-base';
+import type { EventSubHttpListener } from '@twurple/eventsub-http';
 
-if (process.env.NODE_ENV === 'development') {
-  dotenv.config({ path: '.env.development' });
-} else {
-  dotenv.config();
-}
-console.log('Starting TwitchBot');
+// ENV
+dotenv.config({
+  quiet: true,
+  path: process.env.NODE_ENV === 'development' ? '.env.development' : '.env'
+})
 
-console.log(process.env.NODE_ENV);
+console.log('-- Starting TwitchBot');
+
+console.log(`Environment: ${(process.env.NODE_ENV || 'production').toUpperCase()}`);
+
 
 const channelsPath = path.resolve(process.cwd(), process.env.CHANNELS_PATH);
 
@@ -63,10 +66,10 @@ if (!authResult) {
 const { listener, apiClient } = authResult;
 
 //Delete any existing subscriptions
-console.log('Deleting any existing subscriptions');
+console.log('-- Deleting any existing subscriptions');
 await deleteAllSubscriptions(apiClient);
 
-console.log('Registering channels');
+console.log('-- Registering channels');
 
 for (const channel of channels) {
   let channelId;
@@ -89,12 +92,17 @@ for (const channel of channels) {
 
   console.log(`Registering channel: ${channel} (${channelId})`);
 
-  listener.onStreamOnline(channelId, async (event) => {
+  const evt = listener.onStreamOnline(channelId, async (event) => {
     queue.push(event);
     if (queue.length === 1 && !isProcessing) {
       processQueue();
     }
   });
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`CLI Test Command for ${channel}:`);
+    console.log(await evt.getCliTestCommand());
+  }
 }
 
 const processQueue = async () => {
@@ -109,23 +117,28 @@ const processQueue = async () => {
 }
 
 const processMessage = async (event: EventSubStreamOnlineEvent) => {
-    if (sentMessages.includes(event.id)) {
-      console.log(`Message already sent for ${event.broadcasterDisplayName}`);
-      return;
-    }
-    console.log(`Stream is online for ${event.broadcasterDisplayName} - ${event.id}`);
-    await sendWebhook(event);
-    sentMessages.push(event.id);
+  if (sentMessages.includes(event.id)) {
+    console.log(`Message already sent for ${event.broadcasterDisplayName}`);
+    return;
   }
+  console.log(`Stream is online for ${event.broadcasterDisplayName} - ${event.id}`);
+  await sendWebhook(event);
+  sentMessages.push(event.id);
+}
 
 //set timeout to clear sentMessages every 24 hours
-const clearInterval = setInterval(() => {
-  console.log('Clearing sent messages');
+setInterval(() => {
+  console.log('-- Clearing sent messages');
   sentMessages = [];
 }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
 
-// Set cleanup for subscriptions before exiting
-setCleanup(apiClient, listener, clearInterval);
 
-console.log('Listening for events');
-listener.start();
+console.log('-- Listening for events');
+if (process.env.NODE_ENV === 'development') {
+  // Only call start if listener has the start method (EventSubHttpListener)
+  if (typeof (listener as EventSubHttpListener).start === 'function') {
+    (listener as EventSubHttpListener).start();
+  } else {
+    console.warn('Listener does not support start() method in this environment.');
+  }
+}

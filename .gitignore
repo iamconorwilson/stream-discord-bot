@@ -130,3 +130,4 @@ dist
 .pnp.*
 
 channels.json
+channels.dev.json

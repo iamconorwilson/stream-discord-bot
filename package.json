@@ -20,15 +20,17 @@
     "@twurple/eventsub-http": "^7.3.0",
     "@twurple/eventsub-ngrok": "^7.3.0",
     "axios": "^1.10.0",
-    "dotenv": "^16.6.0"
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.29.0",
-    "@types/node": "^24.0.3",
+    "@eslint/js": "^9.30.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.8",
     "cross-env": "^7.0.3",
-    "eslint": "^9.29.0",
-    "globals": "^16.2.0",
+    "eslint": "^9.30.0",
+    "globals": "^16.3.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.35.0"
+    "typescript-eslint": "^8.35.1"
   }
 }
