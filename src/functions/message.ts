@@ -14,15 +14,19 @@ const getStreamWithRetry = async (
   delayMs = 5000
 ): Promise<{ stream: HelixStream | null; broadcaster: HelixUser | null }> => {
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const stream = await event.getStream();
-    const broadcaster = await event.getBroadcaster();
+    try {
+      const stream = await event.getStream();
+      const broadcaster = await event.getBroadcaster();
 
-    if (stream && broadcaster) {
-      return { stream, broadcaster };
+      if (stream && broadcaster) {
+        return { stream, broadcaster };
+      }
+      console.warn(
+        `Attempt ${attempt} of ${retries} failed to get stream for ${event.broadcasterDisplayName}. Retrying in ${delayMs / 1000} seconds...`
+      );
+    } catch (err) {
+      console.error(`Error on attempt ${attempt}:`, err);
     }
-    console.warn(
-      `Attempt ${attempt} of ${retries} failed to get stream for ${event.broadcasterDisplayName}. Retrying in ${delayMs / 1000} seconds...`
-    );
     await delay(delayMs);
   }
   return { stream: null, broadcaster: null };
@@ -85,7 +89,7 @@ const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
     } else {
       console.log(`Webhook sent successfully for ${username}`);
     }
-    
+
   } catch (error) {
     console.error(error);
   }
