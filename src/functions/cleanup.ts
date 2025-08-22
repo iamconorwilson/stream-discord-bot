@@ -45,4 +45,4 @@ const deleteAllSubscriptions = async (apiClient: ApiClient): Promise<void> => {
   await Promise.allSettled(deletionPromises);
 }
 
-export { deleteAllSubscriptions }
+export { deleteAllSubscriptions, getAllSubscriptions }

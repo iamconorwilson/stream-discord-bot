@@ -89,7 +89,7 @@ for (const channel of channels) {
     continue;
   }
 
-  console.log(`Registering channel: ${channel} (${channelId})`);
+  
 
   const evt = listener.onStreamOnline(channelId, async (event) => {
     queue.push(event);
@@ -97,6 +97,8 @@ for (const channel of channels) {
       processQueue();
     }
   });
+
+  console.log(`Registered channel: ${channel} [${channelId}] - ${evt.id}`);
 
   if (process.env.NODE_ENV === 'development' || channel === channels[0]) {
     console.log(`CLI Test Command for ${channel}:`);
