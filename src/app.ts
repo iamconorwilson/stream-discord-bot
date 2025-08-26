@@ -110,7 +110,7 @@ for (const channel of channels) {
 const registeredChannels = await getAllSubscriptions(apiClient);
 console.log(`-- Total registered channels: ${registeredChannels.length} of ${channels.length}`);
 for (const sub of registeredChannels) {
-  console.log(`${sub.id} (${sub.status})`);
+  console.log(`${sub.id} - Status: ${sub.status} - Cost: ${sub.cost}`);
 }
 
 const processQueue = async () => {
