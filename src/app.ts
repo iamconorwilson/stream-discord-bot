@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv';
 // FUNCTIONS
 import auth from './functions/auth.js';
 import sendWebhook from './functions/message.js';
-import { deleteAllSubscriptions } from './functions/cleanup.js';
+import { deleteAllSubscriptions, getAllSubscriptions } from './functions/cleanup.js';
 
 // TYPES
 import type { HelixUser } from '@twurple/api';
@@ -98,12 +98,19 @@ for (const channel of channels) {
     }
   });
 
-  console.log(`Registered channel: ${channel} [${channelId}] - ${evt.id}`);
+  console.log(`Registered channel: ${channel} [${channelId}] - Verified: ${evt.verified}`);
 
   if (process.env.NODE_ENV === 'development' || channel === channels[0]) {
     console.log(`CLI Test Command for ${channel}:`);
     console.log(await evt.getCliTestCommand());
   }
+}
+
+//Check that all channels are registered
+const registeredChannels = await getAllSubscriptions(apiClient);
+console.log(`-- Total registered channels: ${registeredChannels.length} of ${channels.length}`);
+for (const sub of registeredChannels) {
+  console.log(`${sub.id} (${sub.status})`);
 }
 
 const processQueue = async () => {
