@@ -10,7 +10,7 @@ import type { EventSubHttpListener } from '@twurple/eventsub-http';
 // Local imports
 import auth from './functions/auth.js';
 import sendWebhook from './functions/message.js';
-import { deleteAllSubscriptions, logSubscriptions } from './functions/status.js';
+import { deleteAllSubscriptions, logSubscriptions } from './functions/subscriptions.js';
 
 // --- ENVIRONMENT SETUP ---
 dotenv.config({
