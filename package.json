@@ -22,7 +22,7 @@
     "@twurple/eventsub-base": "^7.4.0",
     "@twurple/eventsub-http": "^7.4.0",
     "axios": "^1.11.0",
-    "dotenv": "^17.2.1",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0"
   },
   "devDependencies": {
