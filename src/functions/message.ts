@@ -1,60 +1,57 @@
-import axios from 'axios';
+import { TwitchApiClient } from './auth.js';
 
-//  TYPES
-import type { EventSubStreamOnlineEvent } from '@twurple/eventsub-base';
-import type { HelixStream, HelixUser } from '@twurple/api';
+// const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
-const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+const discordWebhookUrl = 'https://discord.com/api/webhooks/1426202095593197588/6ye9g9ADcMVmTFsEXIFU8lMlyh0JyRam1pPK1ooVLgsPtRHmepVsH5E9uBGkiK_1vvT5';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const getStreamWithRetry = async (
-  event: EventSubStreamOnlineEvent,
-  retries = 6,
-  delayMs = 5000
-): Promise<{ stream: HelixStream | null; broadcaster: HelixUser | null }> => {
+const getStreamWithRetry = async (userId: string, retries = 6, delay = 5000): Promise<{ stream: TwitchStream | null; broadcaster: TwitchUser | null }> => {
+  const client = await TwitchApiClient.create();
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const stream = await event.getStream();
-      const broadcaster = await event.getBroadcaster();
+      const streamResult = await client.getStream(userId);
+      const broadcasterResult = await client.getUserFromId(userId);
 
-      if (stream && broadcaster) {
-        return { stream, broadcaster };
+      if (!streamResult.data || (Array.isArray(streamResult.data) && streamResult.data.length === 0)) {
+        console.error(`Stream for user ID ${userId} not found or user is not live. Retrying... (${attempt}/${retries})`);
+        await new Promise(res => setTimeout(res, delay));
+        continue;
       }
-      console.warn(
-        `Attempt ${attempt} of ${retries} failed to get stream for ${event.broadcasterDisplayName}. Retrying in ${delayMs / 1000} seconds...`
-      );
+      if (!broadcasterResult.data || (Array.isArray(broadcasterResult.data) && broadcasterResult.data.length === 0)) {
+        console.error(`Broadcaster for user ID ${userId} not found. Retrying... (${attempt}/${retries})`);
+        await new Promise(res => setTimeout(res, delay));
+        continue;
+      }
+
+      const stream = Array.isArray(streamResult.data) ? streamResult.data[0] : streamResult.data;
+      const broadcaster = Array.isArray(broadcasterResult.data) ? broadcasterResult.data[0] : broadcasterResult.data;
+
+      return { stream, broadcaster };
     } catch (err) {
       console.error(`Error on attempt ${attempt}:`, err);
     }
-    await delay(delayMs);
+    
   }
   return { stream: null, broadcaster: null };
 }
 
+const sendMessage = async (userId: string) => {
 
-const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
-  const username = event.broadcasterDisplayName;
-
-  // Skip test broadcaster
-  if (username === 'testBroadcaster') {
-    console.log(`Skipping webhook for ${username}`);
-    return;
-  }
-  const { stream, broadcaster } = await getStreamWithRetry(event);
+  const { stream, broadcaster } = await getStreamWithRetry(userId);
 
   if (!stream || !broadcaster) {
-    return console.error(`No stream found for ${username}`);
+    console.error(`Failed to retrieve stream data for user ID ${userId} after multiple attempts.`);
+    return;
   }
 
   const streamTitle = stream.title;
-  const streamCategory = stream.gameName;
-  const streamUrl = `https://twitch.tv/${event.broadcasterName}`;
-  const streamThumbnail = stream.thumbnailUrl
+  const streamCategory = stream.game_name;
+  const username = broadcaster.display_name;
+  const streamUrl = `https://twitch.tv/${username}`;
+  const streamThumbnail = stream.thumbnail_url
     .replace('{width}', '1280')
     .replace('{height}', '720')
     .concat(`?t=${Date.now()}`);
-  const userThumbnail = broadcaster.profilePictureUrl;
+  const userThumbnail = broadcaster.profile_image_url;
 
   const message = {
     content: `${username} just went live at ${streamUrl} !`,
@@ -86,19 +83,19 @@ const sendWebhook = async (event: EventSubStreamOnlineEvent) => {
     username: 'TwitchBot'
   };
 
-  // console.log(JSON.stringify(message));
-
   try {
-    const response = await axios.post(webhookUrl, message);
-    if (response.status !== 204) {
-      console.log(response.status, response.statusText);
-    } else {
-      console.log(`Webhook sent successfully for ${username}`);
+    const response = await fetch(discordWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message)
+    });
+    if (!response.ok) {
+      console.error('Error sending message to Discord:', response.statusText);
     }
-
   } catch (error) {
-    console.error(error);
+    console.error('Error sending message to Discord:', error);
   }
-};
 
-export default sendWebhook;
+}
+
+export { sendMessage };
