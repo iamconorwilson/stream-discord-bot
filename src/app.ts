@@ -22,7 +22,8 @@ const client = await TwitchApiClient.getInstance();
 // Start Express server
 const server = createServer();
 server.listen(3000, () => {
-  console.log('Server is running on http://localhost:3000');
+  const serverUrl = process.env.NODE_ENV === 'development' ? `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}` : `https://${process.env.HOSTNAME}`;
+  console.log(`Server is running on ${serverUrl}`);
 });
 
 let channels: string[] = [];

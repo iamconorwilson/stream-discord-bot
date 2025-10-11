@@ -44,7 +44,7 @@ export const sendMessage = async (userId: string) => {
   const streamTitle = stream.title;
   const streamCategory = stream.game_name;
   const username = broadcaster.display_name;
-  const streamUrl = `https://twitch.tv/${username}`;
+  const streamUrl = `https://twitch.tv/${username.toLowerCase()}`;
   const streamThumbnail = stream.thumbnail_url
     .replace('{width}', '1280')
     .replace('{height}', '720')
