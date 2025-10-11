@@ -7,23 +7,19 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile), quiet: true });
 
 import { TwitchApiClient } from './functions/auth.js';
 import { createServer } from './functions/server.js';
-//auth user with twitch api
+import { createOnlineSubscription, deleteAllSubscriptions, listSubscriptions } from './functions/subscriptions.js';
+
 const client = await TwitchApiClient.create();
 
 const server = createServer();
-
 server.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });
 
-//clean up old subscriptions
-const { data: existingSubscriptions } = await client.listEventSubSubscriptions();
-for (const sub of existingSubscriptions) {
-  await client.deleteEventSubSubscription(sub.id);
-  console.log(`Deleted subscription: ${sub.id}`);
-}
+await deleteAllSubscriptions().then(() => {
+  console.log('Deleted all existing subscriptions');
+});
 
-//read channels.json from data directory
 const dataDir = process.env.DATA_DIR || './data';
 const channelsFile = process.env.NODE_ENV === 'development' ? 'channels.dev.json' : 'channels.json';
 const channelsPath = path.resolve(process.cwd(), dataDir, channelsFile);
@@ -32,7 +28,6 @@ if (!fs.existsSync(channelsPath)) {
   process.exit(1);
 }
 const channels: string[] = JSON.parse(fs.readFileSync(channelsPath, 'utf-8'));
-const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/events/twitch` : `https://${process.env.HOSTNAME}/events/twitch`;
 
 for (const channel of channels) {
   const userResult = await client.getUserFromName(channel);
@@ -41,22 +36,16 @@ for (const channel of channels) {
     console.error(`User not found: ${channel}`);
     continue;
   }
-  await client.createEventSubSubscription(
-    'stream.online',
-    '1',
-    { broadcaster_user_id: user.id },
-    callbackUrl
-  );
+  await createOnlineSubscription(user.id);
   console.log(`Created subscription for ${channel}`);
 }
 
-//wait for 30 seconds
 setTimeout(async () => {
-  const { data } = await client.listEventSubSubscriptions();
-  console.log('Current subscriptions:', data.length);
-  data.map(sub => {
-    console.log(`Subscription ID: ${sub.id}, Type: ${sub.type}, Status: ${sub.status}, Condition: ${JSON.stringify(sub.condition)}`);
-  });
+  const subs = await listSubscriptions();
+  console.log('Current subscriptions:', subs.length);
+  if (subs.length < channels.length) {
+    console.warn('Warning: Some subscriptions may not have been created successfully.');
+  }
 }, 30000);
 
 

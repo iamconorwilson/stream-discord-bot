@@ -1,7 +1,5 @@
 import express from 'express';
-
 import type { Express, Request, Response } from 'express';
-
 import { sendMessage } from './message.js';
 
 const createServer = (): Express => {
@@ -13,12 +11,12 @@ const createServer = (): Express => {
   app.post('/events/twitch', (req: Request, res: Response) => {
     const { body, headers } = req;
     if (headers['twitch-eventsub-message-type'] === 'webhook_callback_verification') {
-      console.log('Subscription verification request:', body);
+      console.log('Subscription verification request:', body.subscription.id);
       const challenge = body.challenge;
       return res.status(200).send(challenge);
     }
     if (headers['twitch-eventsub-message-type'] === 'revocation') {
-      console.log('Revocation request:', body);
+      console.log('Revocation request:', body.subscription.id);
       return res.status(200).end();
     }
     if (headers['twitch-eventsub-message-type'] === 'notification') {

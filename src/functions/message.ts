@@ -1,8 +1,6 @@
 import { TwitchApiClient } from './auth.js';
 
-// const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
-
-const discordWebhookUrl = 'https://discord.com/api/webhooks/1426202095593197588/6ye9g9ADcMVmTFsEXIFU8lMlyh0JyRam1pPK1ooVLgsPtRHmepVsH5E9uBGkiK_1vvT5';
+const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
 const getStreamWithRetry = async (userId: string, retries = 6, delay = 5000): Promise<{ stream: TwitchStream | null; broadcaster: TwitchUser | null }> => {
   const client = await TwitchApiClient.create();

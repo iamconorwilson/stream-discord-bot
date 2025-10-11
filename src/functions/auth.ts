@@ -10,7 +10,6 @@ interface TwitchToken {
     obtainmentTimestamp: number;
 }
 
-// --- THE CLIENT CLASS ---
 export class TwitchApiClient {
     private static readonly API_BASE_URL = 'https://api.twitch.tv/helix';
     private static readonly AUTH_BASE_URL = 'https://id.twitch.tv/oauth2';
@@ -23,9 +22,6 @@ export class TwitchApiClient {
         console.log(TwitchApiClient.API_BASE_URL)
     }
 
-    /**
-     * Asynchronously creates and initializes a client capable of managing App Access Tokens.
-     */
     public static async create(): Promise<TwitchApiClient> {
         const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
         const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
