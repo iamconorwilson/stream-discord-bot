@@ -12,6 +12,7 @@ const createServer = (): Express => {
   // endpoint to receive webhooks from twitch
   app.post('/events/twitch', (req: Request, res: Response) => {
     if (req.headers['twitch-eventsub-message-type'] === 'webhook_callback_verification') {
+      console.log('Subscription verification request:', req.body);
       const challenge = req.body.challenge;
       return res.status(200).send(challenge);
     }

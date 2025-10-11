@@ -1,19 +1,11 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-
 // --- TYPE DEFINITIONS ---
-type TokenType = 'user' | 'app';
-
 interface TwitchApiConfig {
     clientId: string;
     clientSecret: string;
-    userTokenPath: string;
-    appTokenPath: string;
 }
 
-interface TwitchTokens {
+interface TwitchToken {
     accessToken: string;
-    refreshToken?: string | null;
     expiresIn: number;
     obtainmentTimestamp: number;
 }
@@ -24,8 +16,7 @@ export class TwitchApiClient {
     private static readonly AUTH_BASE_URL = 'https://id.twitch.tv/oauth2';
 
     private config: TwitchApiConfig;
-    private userTokens: TwitchTokens | null = null;
-    private appTokens: TwitchTokens | null = null;
+    private appToken: TwitchToken | null = null;
 
     private constructor(config: TwitchApiConfig) {
         this.config = config;
@@ -33,25 +24,19 @@ export class TwitchApiClient {
     }
 
     /**
-     * Asynchronously creates and initializes a client capable of managing both
-     * User and App Access Tokens simultaneously.
+     * Asynchronously creates and initializes a client capable of managing App Access Tokens.
      */
     public static async create(): Promise<TwitchApiClient> {
         const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
         const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
-        const DATA_DIR = process.env.DATA_DIR;
 
-        if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET || !DATA_DIR) {
-            throw new Error('Missing one or more required environment variables: TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, DATA_DIR');
+        if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
+            throw new Error('Missing one or more required environment variables: TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET');
         }
-
-        const resolvedDataDir = path.resolve(process.cwd(), DATA_DIR);
 
         const config: TwitchApiConfig = {
             clientId: TWITCH_CLIENT_ID,
             clientSecret: TWITCH_CLIENT_SECRET,
-            userTokenPath: path.join(resolvedDataDir, 'user_token.json'),
-            appTokenPath: path.join(resolvedDataDir, 'app_token.json'),
         };
 
         const client = new TwitchApiClient(config);
@@ -60,48 +45,21 @@ export class TwitchApiClient {
     }
 
     private async initializeTokens(): Promise<void> {
-        try {
-            const userTokenData = await fs.readFile(this.config.userTokenPath, 'utf-8');
-            this.userTokens = JSON.parse(userTokenData);
-        } catch {
-            console.warn(`User token file not found at ${this.config.userTokenPath}. Scoped calls will fail until a token is generated.`);
-        }
-        try {
-            await fs.access(this.config.appTokenPath);
-        } catch {
-            console.log('App token file not found, creating new one...');
-            await this.fetchAppAccessToken();
-        }
-            const appTokenData = await fs.readFile(this.config.appTokenPath, 'utf-8');
-            this.appTokens = JSON.parse(appTokenData);
+        await this.fetchAppAccessToken();
     }
 
     // --- TOKEN MANAGEMENT ---
-    private isTokenExpired(token: TwitchTokens | null): boolean {
+    private isTokenExpired(token: TwitchToken | null): boolean {
         if (!token) return true;
         const expiresInMilliseconds = (token.expiresIn - 60) * 1000;
         return Date.now() > token.obtainmentTimestamp + expiresInMilliseconds;
     }
 
-    private async writeTokens(type: TokenType, tokens: TwitchTokens): Promise<void> {
-        const filePath = type === 'user' ? this.config.userTokenPath : this.config.appTokenPath;
-        if (type === 'user') this.userTokens = tokens;
-        else this.appTokens = tokens;
-        await fs.writeFile(filePath, JSON.stringify(tokens, null, 2), 'utf-8');
-    }
-
-    private async getValidAccessToken(type: TokenType): Promise<string> {
-        const tokenState = type === 'user' ? this.userTokens : this.appTokens;
-
-        if (this.isTokenExpired(tokenState)) {
-            if (type === 'user') {
-                await this.refreshUserAccessToken();
-            } else { // 'app'
-                await this.fetchAppAccessToken();
-            }
+    private async getValidAccessToken(): Promise<string> {
+        if (this.isTokenExpired(this.appToken)) {
+            await this.fetchAppAccessToken();
         }
-        // After refresh/fetch, the token state is updated, so we can safely return the access token.
-        return (type === 'user' ? this.userTokens! : this.appTokens!).accessToken;
+        return this.appToken!.accessToken;
     }
 
     private async fetchAppAccessToken(): Promise<void> {
@@ -114,38 +72,17 @@ export class TwitchApiClient {
         const response = await fetch(`${TwitchApiClient.AUTH_BASE_URL}/token`, { method: 'POST', body: params });
         if (!response.ok) throw new Error(`Failed to fetch App Access Token: ${await response.text()}`);
         const newTokens = await response.json();
-        await this.writeTokens('app', {
+        this.appToken = {
             accessToken: newTokens.access_token,
             expiresIn: newTokens.expires_in,
             obtainmentTimestamp: Date.now(),
-        });
-        console.log('App Access Token fetched and saved.');
-    }
-
-    private async refreshUserAccessToken(): Promise<void> {
-        if (!this.userTokens?.refreshToken) throw new Error('Cannot refresh user token: No refresh token found.');
-        console.log('Refreshing User Access Token...');
-        const params = new URLSearchParams({
-            grant_type: 'refresh_token',
-            refresh_token: this.userTokens.refreshToken,
-            client_id: this.config.clientId,
-            client_secret: this.config.clientSecret,
-        });
-        const response = await fetch(`${TwitchApiClient.AUTH_BASE_URL}/token`, { method: 'POST', body: params });
-        if (!response.ok) throw new Error(`Failed to refresh User Access Token: ${await response.text()}`);
-        const newTokens = await response.json();
-        await this.writeTokens('user', {
-            accessToken: newTokens.access_token,
-            refreshToken: newTokens.refresh_token,
-            expiresIn: newTokens.expires_in,
-            obtainmentTimestamp: Date.now(),
-        });
-        console.log('User Access Token refreshed and saved.');
+        };
+        console.log('App Access Token fetched and stored in memory.');
     }
 
     // --- GENERIC API REQUEST HANDLER ---
-    private async makeApiRequest<T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: object, tokenType: TokenType = 'user'): Promise<T> {
-        const accessToken = await this.getValidAccessToken(tokenType);
+    private async makeApiRequest<T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: object): Promise<T> {
+        const accessToken = await this.getValidAccessToken();
         const url = `${TwitchApiClient.API_BASE_URL}/${endpoint}`;
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Client-Id': this.config.clientId, 'Content-Type': 'application/json' };
         const response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
@@ -155,12 +92,9 @@ export class TwitchApiClient {
     }
 
     // --- PUBLIC API METHODS ---
-    // Note how each method now specifies the token type required for its internal call.
-
     public async listEventSubSubscriptions(status?: string): Promise<{ data: EventSubSubscription[] }> {
         const endpoint = status ? `eventsub/subscriptions?status=${status}` : 'eventsub/subscriptions';
-        // REQUIRES APP TOKEN
-        return this.makeApiRequest(endpoint, 'GET', undefined, 'app');
+        return this.makeApiRequest(endpoint, 'GET');
     }
 
     public async createEventSubSubscription(
@@ -179,30 +113,25 @@ export class TwitchApiClient {
                 secret: process.env.EVENTSUB_SECRET || 'default_secret'
             },
         };
-        // REQUIRES USER TOKEN for scoped subscriptions, and benefits from user rate limits
-        return this.makeApiRequest('eventsub/subscriptions', 'POST', body, 'user');
+        return this.makeApiRequest('eventsub/subscriptions', 'POST', body);
     }
 
     public async deleteEventSubSubscription(id: string): Promise<void> {
-        // REQUIRES APP TOKEN
-        await this.makeApiRequest(`eventsub/subscriptions?id=${id}`, 'DELETE', undefined, 'app');
+        await this.makeApiRequest(`eventsub/subscriptions?id=${id}`, 'DELETE');
     }
 
     public async getUserFromId(id: string): Promise<{ data: TwitchUser[] | null }> {
         if (!id) return { data: null };
-        // Defaults to USER TOKEN for higher rate limits
         return this.makeApiRequest(`users?id=${encodeURIComponent(id)}`);
     }
 
     public async getUserFromName(login: string): Promise<{ data: TwitchUser[] | null }> {
         if (!login) return { data: null };
-        // Defaults to USER TOKEN for higher rate limits
         return this.makeApiRequest(`users?login=${encodeURIComponent(login)}`);
     }
 
     public async getStream(broadcasterId: string): Promise<{ data: TwitchStream[] | null }> {
         if (!broadcasterId) return { data: null };
-        // Defaults to USER TOKEN for higher rate limits
         return this.makeApiRequest(`streams?user_id=${encodeURIComponent(broadcasterId)}`);
     }
 }
