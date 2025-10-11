@@ -1,9 +1,8 @@
 import { TwitchApiClient } from './auth.js';
 
-const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
-
+// Helper function to get stream and broadcaster info with retries
 const getStreamWithRetry = async (userId: string, retries = 6, delay = 5000): Promise<{ stream: TwitchStream | null; broadcaster: TwitchUser | null }> => {
-  const client = await TwitchApiClient.create();
+  const client = await TwitchApiClient.getInstance();
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const streamResult = await client.getStream(userId);
@@ -32,7 +31,8 @@ const getStreamWithRetry = async (userId: string, retries = 6, delay = 5000): Pr
   return { stream: null, broadcaster: null };
 }
 
-const sendMessage = async (userId: string) => {
+// Send a message to Discord via webhook
+export const sendMessage = async (userId: string) => {
 
   const { stream, broadcaster } = await getStreamWithRetry(userId);
 
@@ -82,6 +82,7 @@ const sendMessage = async (userId: string) => {
   };
 
   try {
+    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
     const response = await fetch(discordWebhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -93,7 +94,6 @@ const sendMessage = async (userId: string) => {
   } catch (error) {
     console.error('Error sending message to Discord:', error);
   }
+  console.log(`Sent Discord notification for ${username}`);
 
 }
-
-export { sendMessage };

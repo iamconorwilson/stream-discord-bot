@@ -1,4 +1,6 @@
-// --- TYPE DEFINITIONS ---
+import crypto from 'crypto';
+
+// --- TYPES ---
 interface TwitchApiConfig {
     clientId: string;
     clientSecret: string;
@@ -10,34 +12,50 @@ interface TwitchToken {
     obtainmentTimestamp: number;
 }
 
+// --- TWITCH CLIENT CLASS ---
 export class TwitchApiClient {
     private static readonly API_BASE_URL = 'https://api.twitch.tv/helix';
     private static readonly AUTH_BASE_URL = 'https://id.twitch.tv/oauth2';
 
+    private static instance: TwitchApiClient | null = null;
+    private static instancePromise: Promise<TwitchApiClient> | null = null;
+
     private config: TwitchApiConfig;
     private appToken: TwitchToken | null = null;
+    private secret: string = process.env.EVENTSUB_SECRET || crypto.randomBytes(32).toString('hex');
 
     private constructor(config: TwitchApiConfig) {
         this.config = config;
-        console.log(TwitchApiClient.API_BASE_URL)
+        console.log(TwitchApiClient.API_BASE_URL);
     }
 
-    public static async create(): Promise<TwitchApiClient> {
-        const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
-        const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
-
-        if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
-            throw new Error('Missing one or more required environment variables: TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET');
+    // --- SINGLETON INSTANCE ---
+    public static async getInstance(): Promise<TwitchApiClient> {
+        if (TwitchApiClient.instance) {
+            return TwitchApiClient.instance;
         }
+        if (TwitchApiClient.instancePromise) {
+            return TwitchApiClient.instancePromise;
+        }
+        TwitchApiClient.instancePromise = (async () => {
+            const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID;
+            const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
 
-        const config: TwitchApiConfig = {
-            clientId: TWITCH_CLIENT_ID,
-            clientSecret: TWITCH_CLIENT_SECRET,
-        };
+            if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
+                throw new Error('Missing one or more required environment variables: TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET');
+            }
 
-        const client = new TwitchApiClient(config);
-        await client.initializeTokens();
-        return client;
+            const config: TwitchApiConfig = {
+                clientId: TWITCH_CLIENT_ID,
+                clientSecret: TWITCH_CLIENT_SECRET,
+            };
+
+            const client = new TwitchApiClient(config);
+            await client.initializeTokens();
+            TwitchApiClient.instance = client;
+            return client;
+        })();
+        return TwitchApiClient.instancePromise;
     }
 
     private async initializeTokens(): Promise<void> {
@@ -94,9 +112,9 @@ export class TwitchApiClient {
     }
 
     public async createEventSubSubscription(
-        type: string, 
-        version: string, 
-        condition: Record<string, string>, 
+        type: string,
+        version: string,
+        condition: Record<string, string>,
         callbackUrl: string
     ): Promise<{ data: EventSubSubscription[] }> {
         const body = {
@@ -106,7 +124,7 @@ export class TwitchApiClient {
             transport: {
                 method: "webhook",
                 callback: callbackUrl,
-                secret: process.env.EVENTSUB_SECRET || 'default_secret'
+                secret: this.secret
             },
         };
         return this.makeApiRequest('eventsub/subscriptions', 'POST', body);
@@ -114,6 +132,20 @@ export class TwitchApiClient {
 
     public async deleteEventSubSubscription(id: string): Promise<void> {
         await this.makeApiRequest(`eventsub/subscriptions?id=${id}`, 'DELETE');
+    }
+
+    public async verifyTwitchSignature(
+        messageId: string,
+        timestamp: string,
+        body: Buffer,
+        providedSignature: string
+    ): Promise<boolean> {
+        const hmac = crypto.createHmac('sha256', this.secret);
+        hmac.update(messageId);
+        hmac.update(timestamp);
+        hmac.update(body);
+        const computedSignature = `sha256=${hmac.digest('hex')}`;
+        return crypto.timingSafeEqual(Buffer.from(computedSignature), Buffer.from(providedSignature));
     }
 
     public async getUserFromId(id: string): Promise<{ data: TwitchUser[] | null }> {
