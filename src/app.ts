@@ -27,8 +27,6 @@ if (!fs.existsSync(channelsPath)) {
 const channels: string[] = JSON.parse(fs.readFileSync(channelsPath, 'utf-8'));
 const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/events/twitch` : `https://${process.env.HOSTNAME}/events/twitch`;
 
-console.log(callbackUrl);
-
 for (const channel of channels) {
   const userResult = await client.getUserFromName(channel);
   const user = Array.isArray(userResult.data) ? userResult.data[0] : userResult.data;
@@ -36,19 +34,22 @@ for (const channel of channels) {
     console.error(`User not found: ${channel}`);
     continue;
   }
-  const subscription = await client.createEventSubSubscription(
+  await client.createEventSubSubscription(
     'stream.online',
     '1',
     { broadcaster_user_id: user.id },
     callbackUrl
   );
-  console.log(`Created subscription for ${user.display_name}:`, subscription);
+  console.log(`Created subscription for ${user.display_name}`);
 }
 
 //wait for 30 seconds
 setTimeout(async () => {
-  const subs = await client.listEventSubSubscriptions();
-  console.log('Current subscriptions:', subs);
+  const { data } = await client.listEventSubSubscriptions();
+  console.log('Current subscriptions:', data.length);
+  data.map(sub => {
+    console.log(`Subscription ID: ${sub.id}, Type: ${sub.type}, Status: ${sub.status}, Condition: ${JSON.stringify(sub.condition)}`);
+  });
 }, 30000);
 
 
