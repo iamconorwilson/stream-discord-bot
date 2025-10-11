@@ -30,10 +30,10 @@ let channels: string[] = [];
 if (process.env.NODE_ENV !== 'development') {
 
   // Clear existing subscriptions to avoid duplicates
-  await deleteAllSubscriptions().then(() => {
-    console.log('Deleted all existing subscriptions');
+  await deleteAllSubscriptions().then((count) => {
+    console.log(`Deleted ${count} existing subscriptions`);
   });
-
+  
   // Load channels from configuration file
   const dataDir = process.env.DATA_DIR || './data';
   const channelsPath = path.resolve(process.cwd(), dataDir, 'channels.json');
