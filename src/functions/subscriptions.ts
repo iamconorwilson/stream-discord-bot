@@ -1,55 +1,42 @@
-import type { ApiClient, HelixEventSubSubscription, HelixPaginatedEventSubSubscriptionsResult } from '@twurple/api';
+import { TwitchApiClient } from "./auth.js";
 
-const getAllSubscriptions = async (apiClient: ApiClient): Promise<HelixEventSubSubscription[]> => {
-  let allSubscriptions: HelixEventSubSubscription[] = [];
-  let currentCursor = '';
-  let hasMore = true;
+let client: TwitchApiClient | null = null;
 
-  while (hasMore) {
-    try {
-      const response: HelixPaginatedEventSubSubscriptionsResult = await apiClient.eventSub.getSubscriptions({ after: currentCursor });
-      allSubscriptions = allSubscriptions.concat(response.data);
-
-      if (response.cursor) {
-        currentCursor = response.cursor;
-      } else {
-        hasMore = false; // No more cursor, so no more pages
-      }
-    } catch (error) {
-      console.error("Error fetching subscriptions:", error);
-      hasMore = false; // Stop if an error occurs
-    }
+// Get Client instance, initializing if necessary
+const getClient = async (): Promise<TwitchApiClient> => {
+  if (!client) {
+    client = await TwitchApiClient.getInstance();
   }
+  return client;
+};
 
-  return allSubscriptions;
-}
+// --- SUBSCRIPTION MANAGEMENT ---
+export const createOnlineSubscription = async (broadcasterId: string): Promise<EventSubSubscription[]> => {
+  const client = await getClient();
+  const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/events/twitch` : `https://${process.env.HOSTNAME}/events/twitch`;
+  const sub = await client.createEventSubSubscription(
+    'stream.online',
+    '1',
+    { broadcaster_user_id: broadcasterId },
+    callbackUrl
+  );
+  return sub.data;
+};
 
-const logSubscriptions = async (apiClient: ApiClient): Promise<void> => {
-  const subscriptions = await getAllSubscriptions(apiClient);
-  console.log(`Found ${subscriptions.length} subscriptions:`);
-  subscriptions.forEach((sub) => {
-    console.log(`ID: ${sub.id} - Status: ${sub.status}`);
-  });
-}
+export const listSubscriptions = async (): Promise<EventSubSubscription[]> => {
+  const client = await getClient();
+  const subs = await client.listEventSubSubscriptions();
+  return subs.data;
+};
 
-const deleteAllSubscriptions = async (apiClient: ApiClient): Promise<void> => {
+export const deleteSubscription = async (subscriptionId: string): Promise<void> => {
+  const client = await getClient();
+  await client.deleteEventSubSubscription(subscriptionId);
+};
 
-  const subscriptions = await getAllSubscriptions(apiClient);
-  console.log(`Found ${subscriptions.length} subscriptions.`);
-
-  if (subscriptions.length === 0) {
-    return;
-  }
-
-  const deletionPromises = subscriptions.map(async (subscription, index) => {
-    try {
-      await apiClient.eventSub.deleteSubscription(subscription.id);
-      console.log(`Deleted subscription ${index + 1} of ${subscriptions.length} (ID: ${subscription.id})`);
-    } catch (error) {
-      console.error(`Failed to delete subscription with ID ${subscription.id}:`, error);
-    }
-  });
-  await Promise.allSettled(deletionPromises);
-}
-
-export { deleteAllSubscriptions, getAllSubscriptions, logSubscriptions };
+export const deleteAllSubscriptions = async (): Promise<number> => {
+  const client = await getClient();
+  const { data: existingSubscriptions } = await client.listEventSubSubscriptions();
+  await Promise.all(existingSubscriptions.map(sub => client.deleteEventSubSubscription(sub.id)));
+  return existingSubscriptions.length;
+};

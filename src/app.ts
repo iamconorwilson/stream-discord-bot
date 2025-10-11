@@ -1,154 +1,71 @@
-import { readFileSync, existsSync } from 'fs';
+import dotenv from 'dotenv';
 import path from 'path';
-import * as dotenv from 'dotenv';
 
-// Third-party types
-import type { HelixUser } from '@twurple/api';
-import type { EventSubStreamOnlineEvent } from '@twurple/eventsub-base';
-import type { EventSubHttpListener } from '@twurple/eventsub-http';
+// -- SETUP ENVIRONMENT VARIABLES --
+if (process.env.NODE_ENV === 'development') {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.dev'), quiet: true });
+  console.log('Using environment file: .env.dev');
+} else {
+  dotenv.config({ quiet: true });
+}
+console.log('Starting application...');
 
-// Local imports
-import auth from './functions/auth.js';
-import sendWebhook from './functions/message.js';
-import { deleteAllSubscriptions, logSubscriptions } from './functions/subscriptions.js';
+// -- START SERVER --
+import fs from 'fs';
+import { TwitchApiClient } from './functions/auth.js';
+import { createServer } from './functions/server.js';
+import { createOnlineSubscription, deleteAllSubscriptions, listSubscriptions } from './functions/subscriptions.js';
 
-// --- ENVIRONMENT SETUP ---
-dotenv.config({
-  quiet: true,
-  path: process.env.NODE_ENV === 'development' ? '.env.development' : '.env'
+// Initialize Twitch API client
+const client = await TwitchApiClient.getInstance();
+
+// Start Express server
+const server = createServer();
+server.listen(3000, () => {
+  console.log('Server is running on http://localhost:3000');
 });
 
-console.log('-- Starting TwitchBot');
-console.log(`Environment: ${(process.env.NODE_ENV || 'production').toUpperCase()}`);
+let channels: string[] = [];
 
-// --- CONSTANTS & STATE ---
-const channelsPath = path.resolve(process.cwd(), process.env.CHANNELS_PATH);
-let channels: string[];
-let sentMessages: string[] = [];
-const queue: object[] = [];
-let isProcessing = false;
+if (process.env.NODE_ENV !== 'development') {
 
-// --- UTILITY FUNCTIONS ---
-const processQueue = async () => {
-  while (queue.length > 0) {
-    isProcessing = true;
-    const event = queue.shift();
-    if (event) {
-      await processMessage(event as EventSubStreamOnlineEvent);
-    }
-  }
-  isProcessing = false;
-};
-
-const processMessage = async (event: EventSubStreamOnlineEvent) => {
-  if (sentMessages.includes(event.id)) {
-    console.log(`Message already sent for ${event.broadcasterDisplayName}`);
-    return;
-  }
-  console.log(`Stream is online for ${event.broadcasterDisplayName} - ${event.id}`);
-  await sendWebhook(event);
-  sentMessages.push(event.id);
-};
-
-// --- MAIN LOGIC ---
-async function main() {
-  // Check channels.json existence
-  if (!existsSync(channelsPath)) {
-    console.error('No channels.json found. Please create one.');
-    console.log(channelsPath);
+  // Clear existing subscriptions to avoid duplicates
+  await deleteAllSubscriptions().then((count) => {
+    console.log(`Deleted ${count} existing subscriptions`);
+  });
+  
+  // Load channels from configuration file
+  const dataDir = process.env.DATA_DIR || './data';
+  const channelsPath = path.resolve(process.cwd(), dataDir, 'channels.json');
+  if (!fs.existsSync(channelsPath)) {
+    console.error(`Channels file not found at ${channelsPath}`);
     process.exit(1);
   }
+  channels = JSON.parse(fs.readFileSync(channelsPath, 'utf-8'));
 
-  // Parse channels.json
-  try {
-    const parsedChannels = JSON.parse(readFileSync(channelsPath, 'utf-8'));
-    if (
-      Array.isArray(parsedChannels) &&
-      parsedChannels.every((item) => typeof item === 'string')
-    ) {
-      channels = parsedChannels;
-    } else {
-      throw new Error(
-        'Invalid channels.json format. Expected an array of strings.'
-      );
-    }
-  } catch (error) {
-    console.error('Failed to parse channels.json:', error);
-    process.exit(1);
-  }
-
-  // Authenticate
-  const authResult = await auth();
-  if (!authResult) {
-    console.error('Failed to authenticate');
-    process.exit(1);
-  }
-  const { listener, apiClient } = authResult;
-
-  // Delete existing subscriptions
-  console.log('-- Deleting any existing subscriptions');
-  await deleteAllSubscriptions(apiClient);
-
-  // Register channels
-  console.log('-- Registering channels');
+  // Create subscriptions for each channel
   for (const channel of channels) {
-    let channelId;
-    try {
-      channelId = await apiClient.users
-        .getUserByName(channel)
-        .then((user: HelixUser | null) => {
-          if (user) {
-            return user.id;
-          } else {
-            throw new Error(`User ${channel} not found`);
-          }
-        });
-    } catch (error) {
-      console.error(`Failed to get channel ID for ${channel}`);
-      console.error(error);
+    const userResult = await client.getUserFromName(channel);
+    const user = Array.isArray(userResult.data) ? userResult.data[0] : userResult.data;
+    if (!user) {
+      console.error(`User not found: ${channel}`);
       continue;
     }
-
-    const evt = listener.onStreamOnline(channelId, async (event) => {
-      queue.push(event);
-      if (queue.length === 1 && !isProcessing) {
-        processQueue();
-      }
-    });
-
-    console.log(`Registered channel: ${channel} [${channelId}] - Verified: ${evt.verified}`);
-
-    if (process.env.NODE_ENV === 'development' || channel === channels[0]) {
-      console.log(`CLI Test Command for ${channel}:`);
-      console.log(await evt.getCliTestCommand());
-    }
+    await createOnlineSubscription(user.id);
+    console.log(`Created subscription for ${channel}`);
   }
-
-  // Wait 30 seconds and log subscriptions
-  await new Promise((resolve) => setTimeout(resolve, 30000))
-  .then(async () => {
-    console.log('-- Checking subscriptions');
-    await logSubscriptions(apiClient);
-  });
-
-  // Set interval run check and clear sentMessages every 24 hours
-  setInterval(async () => {
-    console.log('-- Checking subscriptions');
-    await logSubscriptions(apiClient);
-    console.log('-- Clearing sent messages');
-    sentMessages = [];
-  }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
-
-  // Start listening for events
-  console.log('-- Listening for events');
-  if (process.env.NODE_ENV === 'development') {
-    if (typeof (listener as EventSubHttpListener).start === 'function') {
-      (listener as EventSubHttpListener).start();
-    } else {
-      console.warn('Listener does not support start() method in this environment.');
-    }
-  }
+} else {
+  console.log('Development mode: Skipping subscription setup.');
 }
 
-// --- RUN MAIN ---
-main();
+// List current subscriptions after a delay to ensure they are set up
+setTimeout(async () => {
+  const subs = await listSubscriptions();
+  console.log('Current subscriptions:', subs.length);
+  if (subs.length < channels.length && process.env.NODE_ENV !== 'development') {
+    console.warn('Warning: Some subscriptions may not have been created successfully.');
+  }
+}, 30000);
+
+
+

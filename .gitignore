@@ -129,5 +129,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-channels.json
-channels.dev.json
+/data
+.env.dev

@@ -5,8 +5,7 @@ declare namespace NodeJS {
         TWITCH_CLIENT_SECRET: string;
         EVENTSUB_SECRET: string;
         DISCORD_WEBHOOK_URL: string;
-        CHANNELS_PATH: string;
-        NGROK_AUTH_TOKEN?: string; // Optional for production
+        DATA_DIR: string;
         HOSTNAME?: string; // Optional for development
         PORT?: string; // Optional for development
     }
