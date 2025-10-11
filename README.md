@@ -1,5 +1,5 @@
 # Twitch Discord Alerts
-A simple JS application that sends a message to a Discord channel when a Twitch streamer goes live.
+A simple Typescript application that sends a message to a Discord channel when a Twitch streamer goes live.
 
 ## Prerequisites
 - Twitch application with a client ID and client secret (https://dev.twitch.tv/console)
@@ -11,13 +11,12 @@ A simple JS application that sends a message to a Discord channel when a Twitch 
 ```env
 TWITCH_CLIENT_ID=your_twitch_client_id
 TWITCH_CLIENT_SECRET=your_twitch_client_secret
-EVENTSUB_SECRET=random_string # Used for verifying Twitch eventsub subscriptions
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxxxxxx/xxxxxxx # URL for the Discord webhook
 HOSTNAME=xxxxxx # Hostname for the server
 PORT=3000 # Port for the server
-CHANNELS_PATH=channels.json # Path to the channels file relative to the root directory
+DATA_PATH=./data # Path to the data directory, containing a channels.json file
 ```
-3. Create a channels.json file at your chosen path, containing your tracked channel usernames:
+3. Create a channels.json file at your chosen data path, containing your tracked channel usernames:
 ```json
 [
     "user1",
@@ -28,10 +27,13 @@ CHANNELS_PATH=channels.json # Path to the channels file relative to the root dir
 5. Start the application with `npm start`
 
 ## Local Development
-The development environment uses ngrok to create a public URL for the application. To set up the development environment:
-1. Create a .env.development file in the root directory. This file should contain the same variables as the .env file, but with an additional ngrok token variable:
+The development environment uses the Twitch CLI to trigger test notifications. To set up the development environment:
+1. Install the Twitch CLI (https://dev.twitch.tv/docs/cli/)
+2. Create a .env.dev file in the root directory. This file should contain the same variables as the .env file, but with an additional `EVENTSUB_SECRET` variable and `HOSTNAME` changed to `localhost`:
 ```env
 # ...
-NGROK_AUTH_TOKEN=your_ngrok_auth_token
+EVENTSUB_SECRET=dev_secret
+HOSTNAME=localhost
 ```
-2. Run the development server with `npm run dev`
+3. Run the development server with `npm run dev`
+4. Use the Twitch CLI to send a mock request `twitch event trigger streamup -F http://localhost:3000/events/twitch -s <your_dev_secret> -t <broadcaster_id>`
