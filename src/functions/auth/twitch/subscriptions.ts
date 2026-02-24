@@ -37,6 +37,8 @@ export const deleteSubscription = async (subscriptionId: string): Promise<void> 
 export const deleteAllSubscriptions = async (): Promise<number> => {
   const client = await getClient();
   const { data: existingSubscriptions } = await client.listEventSubSubscriptions();
-  await Promise.all(existingSubscriptions.map(sub => client.deleteEventSubSubscription(sub.id)));
-  return existingSubscriptions.length;
+  if (existingSubscriptions && existingSubscriptions.length > 0) {
+    await Promise.all(existingSubscriptions.map(sub => client.deleteEventSubSubscription(sub.id)));
+  }
+  return existingSubscriptions ? existingSubscriptions.length : 0;
 };
