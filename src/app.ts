@@ -66,11 +66,11 @@ if (process.env.NODE_ENV !== 'development') {
       const userResult = await client.getUserFromName(channel);
       const user = Array.isArray(userResult.data) ? userResult.data[0] : userResult.data;
       if (!user) {
-        console.error(`Twitch user not found: ${channel}`);
+        console.error(`[Twitch] User not found: ${channel}`);
         continue;
       }
       await createOnlineSubscription(user.id);
-      console.log(`Created Twitch subscription for ${channel}`);
+      console.log(`[Twitch] Created subscription for ${channel}`);
     }
   }
 
@@ -79,13 +79,13 @@ if (process.env.NODE_ENV !== 'development') {
     const kickClient = await KickApiClient.getInstance();
     for (const channel of channels.kick) {
       const channelData = await kickClient.getChannel(channel);
-      const userId = channelData?.user_id;
+      const userId = channelData?.broadcaster_user_id;
       if (!userId) {
-        console.error(`Kick user not found: ${channel}`);
+        console.error(`[Kick] User not found: ${channel}`);
         continue;
       }
       await createKickSubscription(userId);
-      console.log(`Created Kick subscription for ${channel} (ID: ${userId})`);
+      console.log(`[Kick] Created subscription for ${channel} (ID: ${userId})`);
     }
   }
 } else {

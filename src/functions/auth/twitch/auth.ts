@@ -77,21 +77,21 @@ export class TwitchApiClient {
     }
 
     private async fetchAppAccessToken(): Promise<void> {
-        console.log('Fetching new App Access Token...');
+        console.log('[Twitch] Fetching new App Access Token...');
         const params = new URLSearchParams({
             client_id: this.config.clientId,
             client_secret: this.config.clientSecret,
             grant_type: 'client_credentials',
         });
         const response = await fetch(`${TwitchApiClient.AUTH_BASE_URL}/token`, { method: 'POST', body: params });
-        if (!response.ok) throw new Error(`Failed to fetch App Access Token: ${await response.text()}`);
+        if (!response.ok) throw new Error(`[Twitch] Failed to fetch App Access Token: ${await response.text()}`);
         const newTokens = await response.json();
         this.appToken = {
             accessToken: newTokens.access_token,
             expiresIn: newTokens.expires_in,
             obtainmentTimestamp: Date.now(),
         };
-        console.log('App Access Token fetched and stored in memory.');
+        console.log('[Twitch] App Access Token fetched and stored in memory.');
     }
 
     // --- GENERIC API REQUEST HANDLER ---
@@ -100,7 +100,7 @@ export class TwitchApiClient {
         const url = `${TwitchApiClient.API_BASE_URL}/${endpoint}`;
         const headers = { 'Authorization': `Bearer ${accessToken}`, 'Client-Id': this.config.clientId, 'Content-Type': 'application/json' };
         const response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
-        if (!response.ok) throw new Error(`Twitch API Error: ${response.status} - ${await response.text()}`);
+        if (!response.ok) throw new Error(`[Twitch] API Error: ${response.status} - ${await response.text()}`);
         if (response.status === 204) return null as T;
         return (await response.json()) as T;
     }
