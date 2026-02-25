@@ -42,24 +42,25 @@ const getKickStreamData = async (userId: string): Promise<NormalizedStreamData> 
   const channelResult = await client.getChannel(userId);
   const userResult = await client.getUser(userId);
 
-  if (!channelResult || channelResult.error) {
+  if (!channelResult) {
     throw new Error(`Channel for user ID ${userId} not found.`);
   }
 
-  const stream = channelResult.livestream || channelResult.stream || channelResult;
+  if (!userResult) {
+    throw new Error(`User for user ID ${userId} not found.`);
+  }
+
+  const stream = channelResult.stream;
   if (!stream || stream.is_live === false) {
     throw new Error(`Stream for user ID ${userId} not live or missing.`);
   }
 
-  const username = userResult?.[0]?.name || userResult?.[0]?.username || userResult?.name || userResult?.username || channelResult.user?.username || 'Unknown Streamer';
-  const profilePic = userResult?.[0]?.profile_pic || userResult?.profile_pic || channelResult.user?.profile_pic || '';
-  const streamTitle = stream.session_title || stream.title || username;
-  const category = stream.categories?.[0]?.name || stream.category?.name || 'Just Chatting';
-  const slug = userResult?.[0]?.slug || userResult?.slug || channelResult.slug || username;
-
-  // Ensure stream.thumbnail is safely read whether it's an object {url} or a string
-  const thumbnailObj = stream.thumbnail;
-  const streamThumbnail = (typeof thumbnailObj === 'object' && thumbnailObj !== null) ? (thumbnailObj.url || '') : (thumbnailObj || stream.thumbnail_url || '');
+  const username = userResult.name;
+  const profilePic = userResult.profile_picture;
+  const streamTitle = channelResult.stream_title;
+  const category = channelResult.category.name || 'Just Chatting';
+  const slug = channelResult.slug;
+  const streamThumbnail = channelResult.stream.thumbnail;
 
   return {
     streamTitle,

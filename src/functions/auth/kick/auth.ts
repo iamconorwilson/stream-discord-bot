@@ -139,14 +139,13 @@ export class KickApiClient {
     return (await response.json()) as T;
   }
 
-  public async getChannel(identifier: string | number): Promise<any | null> {
+  public async getChannel(identifier: string | number): Promise<KickChannel | null> {
     try {
-      // Try official authenticated channel endpoint
       const queryParam = (typeof identifier === 'string' && isNaN(Number(identifier)))
         ? `slug=${encodeURIComponent(identifier)}`
         : `broadcaster_user_id=${encodeURIComponent(identifier)}`;
 
-      const response = await this.makeApiRequest(`channels?${queryParam}`);
+      const response: KickChannel = await this.makeApiRequest(`channels?${queryParam}`);
 
       if (response && (response as any).data && Array.isArray((response as any).data)) {
         return (response as any).data[0] || null;
@@ -158,9 +157,8 @@ export class KickApiClient {
     }
   }
 
-  public async getUser(identifier: string): Promise<any | null> {
+  public async getUser(identifier: string): Promise<KickUser | null> {
     try {
-      // Official authenticated users endpoint
       return await this.makeApiRequest(`users?id=${encodeURIComponent(identifier)}`);
     } catch (err) {
       console.error(`[Kick] Error fetching user info for ${identifier}:`, err);
