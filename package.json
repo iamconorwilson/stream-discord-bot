@@ -1,6 +1,6 @@
 {
-  "name": "discord-twitch-alert",
-  "version": "2.0.0",
+  "name": "stream-discord",
+  "version": "3.0.0",
   "main": "app.js",
   "type": "module",
   "engines": {

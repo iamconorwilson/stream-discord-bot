@@ -175,12 +175,12 @@ export class KickApiClient {
       version: number;
     }[]
   ): Promise<any> {
-    const actualBody = {
+    const body = {
       broadcaster_user_id: broadcasterId,
       events: events,
       method: "webhook"
     };
-    return this.makeApiRequest('events/subscriptions', 'POST', actualBody);
+    return this.makeApiRequest('events/subscriptions', 'POST', body);
   }
 
   public async listEventSubSubscriptions(): Promise<any> {
@@ -188,7 +188,7 @@ export class KickApiClient {
   }
 
   public async deleteEventSubSubscription(id: string): Promise<void> {
-    await this.makeApiRequest(`events/subscriptions/${id}`, 'DELETE');
+    await this.makeApiRequest(`events/subscriptions?id=${id}`, 'DELETE');
   }
 
   public verifyKickSignature(

@@ -14,8 +14,8 @@ console.log('Starting application...');
 import fs from 'fs';
 import { TwitchApiClient } from './functions/auth/twitch/auth.js';
 import { createServer } from './functions/server.js';
-import { createOnlineSubscription, deleteAllTwitchSubscriptions, listTwitchSubscriptions } from './functions/auth/twitch/subscriptions.js';
-import { createKickSubscription, deleteAllKickSubscriptions, listKickSubscriptions } from './functions/auth/kick/subscriptions.js';
+import { createTwitchOnlineSubscription, deleteAllTwitchSubscriptions, listTwitchSubscriptions } from './functions/auth/twitch/subscriptions.js';
+import { createKickOnlineSubscription, deleteAllKickSubscriptions, listKickSubscriptions } from './functions/auth/kick/subscriptions.js';
 import { KickApiClient } from './functions/auth/kick/auth.js';
 
 // Initialize Twitch API client
@@ -70,7 +70,7 @@ if (process.env.NODE_ENV !== 'development') {
         console.error(`[Twitch] User not found: ${channel}`);
         continue;
       }
-      await createOnlineSubscription(user.id);
+      await createTwitchOnlineSubscription(user.id);
       console.log(`[Twitch] Created subscription for ${channel}`);
     }
   }
@@ -84,7 +84,7 @@ if (process.env.NODE_ENV !== 'development') {
         console.error(`[Kick] User not found: ${channel}`);
         continue;
       }
-      await createKickSubscription(userId);
+      await createKickOnlineSubscription(userId);
       console.log(`[Kick] Created subscription for ${channel} (ID: ${userId})`);
     }
   }
