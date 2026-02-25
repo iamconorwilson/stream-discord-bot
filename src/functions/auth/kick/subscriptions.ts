@@ -15,7 +15,8 @@ export const createKickSubscription = async (broadcasterId: number): Promise<any
     console.warn("[Kick] Cannot create subscription: Not authenticated.");
     return null;
   }
-  const sub = await client.createEventSubSubscription(broadcasterId);
+  const events = [{ name: "livestream.status.updated", version: 1 }];
+  const sub = await client.createEventSubSubscription(broadcasterId, events);
   return sub?.data;
 };
 

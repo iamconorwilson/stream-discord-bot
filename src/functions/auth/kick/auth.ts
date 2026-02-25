@@ -169,11 +169,15 @@ export class KickApiClient {
   }
 
   public async createEventSubSubscription(
-    broadcasterId: number
+    broadcasterId: number,
+    events: {
+      name: string;
+      version: number;
+    }[]
   ): Promise<any> {
     const actualBody = {
       broadcaster_user_id: broadcasterId,
-      events: [{ name: "events:subscribe", version: 1 }],
+      events: events,
       method: "webhook"
     };
     return this.makeApiRequest('events/subscriptions', 'POST', actualBody);

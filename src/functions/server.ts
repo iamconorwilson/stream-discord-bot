@@ -88,9 +88,8 @@ export const createServer = (): Express => {
     const body = JSON.parse(req.body.toString());
     const eventType = headers['kick-event-type'];
 
-    // For stream online, we look for livestream.status.updated or similar
-    if (eventType === 'livestream.status.updated' || eventType === 'stream.started') {
-      const broadcasterId = body.broadcaster_user_id || body.user_id || body.channel_id;
+    if (eventType === 'livestream.status.updated' && body.is_live === true) {
+      const broadcasterId = body.broadcaster_user_id;
       if (broadcasterId) {
         console.log(`Received Kick notification for broadcaster ID: ${broadcasterId}`);
         res.status(200).end();
