@@ -34,7 +34,7 @@ export class KickApiClient {
       const KICK_CLIENT_SECRET = process.env.KICK_CLIENT_SECRET;
 
       if (!KICK_CLIENT_ID || !KICK_CLIENT_SECRET) {
-        console.warn('Missing Kick credentials. Kick integrations disabled.');
+        console.warn('[Kick] Missing Kick credentials. Kick integrations disabled.');
         const client = new KickApiClient({ clientId: '', clientSecret: '' });
         KickApiClient.instance = client;
         return client;
@@ -48,7 +48,7 @@ export class KickApiClient {
       try {
         await client.initialize();
       } catch (err) {
-        console.error("Failed to initialize KickApiClient:", err);
+        console.error("[Kick] Failed to initialize KickApiClient:", err);
       }
       KickApiClient.instance = client;
       return client;
@@ -62,12 +62,13 @@ export class KickApiClient {
     try {
       await this.getValidAccessToken();
     } catch (e) {
-      console.error("Failed to get Kick app access token on init", e);
+      console.error("[Kick] Failed to get Kick app access token on init", e);
     }
   }
 
   // --- APP ACCESS TOKEN FLOW ---
   private async fetchAppAccessToken(): Promise<void> {
+    console.log('[Kick] Fetching new App Access Token...');
     const params = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: this.config.clientId,
@@ -81,7 +82,7 @@ export class KickApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed client credentials exchange: ${await response.text()}`);
+      throw new Error(`[Kick] Failed to fetch App Access Token: ${await response.text()}`);
     }
 
     const tokens = await response.json();
@@ -90,7 +91,7 @@ export class KickApiClient {
       expiresIn: tokens.expires_in,
       obtainmentTimestamp: Date.now()
     };
-    console.log("Kick App access token acquired successfully.");
+    console.log('[Kick] App Access Token fetched and stored in memory.');
   }
 
   private isTokenExpired(token: KickToken | null): boolean {
@@ -107,14 +108,14 @@ export class KickApiClient {
     if (this.isTokenExpired(this.appToken)) {
       await this.fetchAppAccessToken();
       if (!this.appToken) {
-        throw new Error("Failed to acquire Kick app access token.");
+        throw new Error("[Kick] Failed to acquire App Access Token.");
       }
     }
     return this.appToken!.accessToken;
   }
 
   private async fetchPublicKey(): Promise<void> {
-    console.log('Fetching Kick Public Key...');
+    console.log('[Kick] Fetching Kick Public Key...');
     const response = await fetch('https://api.kick.com/public/v1/public-key');
     if (!response.ok) return;
     const text = await response.text();
@@ -152,7 +153,7 @@ export class KickApiClient {
       }
       return response;
     } catch (err) {
-      console.warn(`Kick getChannel failed for ${identifier}`, err);
+      console.warn(`[Kick] Error fetching channel info for ${identifier}`, err);
       return null;
     }
   }
@@ -162,20 +163,18 @@ export class KickApiClient {
       // Official authenticated users endpoint
       return await this.makeApiRequest(`users?id=${encodeURIComponent(identifier)}`);
     } catch (err) {
-      console.error(`Error fetching Kick user info for ${identifier}:`, err);
+      console.error(`[Kick] Error fetching user info for ${identifier}:`, err);
       return null;
     }
   }
 
   public async createEventSubSubscription(
-    broadcasterId: number,
-    callbackUrl: string
+    broadcasterId: number
   ): Promise<any> {
     const actualBody = {
       broadcaster_user_id: broadcasterId,
       events: [{ name: "events:subscribe", version: 1 }],
-      method: "webhook",
-      webhook: callbackUrl
+      method: "webhook"
     };
     return this.makeApiRequest('events/subscriptions', 'POST', actualBody);
   }

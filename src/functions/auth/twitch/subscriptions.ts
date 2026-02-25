@@ -23,18 +23,18 @@ export const createOnlineSubscription = async (broadcasterId: string): Promise<E
   return sub.data;
 };
 
-export const listSubscriptions = async (): Promise<EventSubSubscription[]> => {
+export const listTwitchSubscriptions = async (): Promise<EventSubSubscription[]> => {
   const client = await getClient();
   const subs = await client.listEventSubSubscriptions();
   return subs.data;
 };
 
-export const deleteSubscription = async (subscriptionId: string): Promise<void> => {
+export const deleteTwitchSubscription = async (subscriptionId: string): Promise<void> => {
   const client = await getClient();
   await client.deleteEventSubSubscription(subscriptionId);
 };
 
-export const deleteAllSubscriptions = async (): Promise<number> => {
+export const deleteAllTwitchSubscriptions = async (): Promise<number> => {
   const client = await getClient();
   const { data: existingSubscriptions } = await client.listEventSubSubscriptions();
   if (existingSubscriptions && existingSubscriptions.length > 0) {

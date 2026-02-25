@@ -12,18 +12,17 @@ const getKickClient = async (): Promise<KickApiClient> => {
 export const createKickSubscription = async (broadcasterId: number): Promise<any> => {
   const client = await getKickClient();
   if (!client.isAuthenticated) {
-    console.warn("Cannot create Kick subscription: Not authenticated.");
+    console.warn("[Kick] Cannot create subscription: Not authenticated.");
     return null;
   }
-  const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/events/kick` : `https://${process.env.HOSTNAME}/events/kick`;
-  const sub = await client.createEventSubSubscription(broadcasterId, callbackUrl);
+  const sub = await client.createEventSubSubscription(broadcasterId);
   return sub?.data;
 };
 
 export const listKickSubscriptions = async (): Promise<any[]> => {
   const client = await getKickClient();
   if (!client.isAuthenticated) {
-    console.warn("Cannot list Kick subscriptions: Not authenticated.");
+    console.warn("[Kick] Cannot list subscriptions: Not authenticated.");
     return [];
   }
   const subs = await client.listEventSubSubscriptions();
@@ -33,7 +32,7 @@ export const listKickSubscriptions = async (): Promise<any[]> => {
 export const deleteAllKickSubscriptions = async (): Promise<number> => {
   const client = await getKickClient();
   if (!client.isAuthenticated) {
-    console.warn("Cannot delete Kick subscriptions: Not authenticated.");
+    console.warn("[Kick] Cannot delete subscriptions: Not authenticated.");
     return 0;
   }
   const subs = await client.listEventSubSubscriptions();
