@@ -11,8 +11,12 @@ const getClient = async (): Promise<TwitchApiClient> => {
 };
 
 // --- SUBSCRIPTION MANAGEMENT ---
-export const createOnlineSubscription = async (broadcasterId: string): Promise<EventSubSubscription[]> => {
+export const createTwitchOnlineSubscription = async (broadcasterId: string): Promise<EventSubSubscription[]> => {
   const client = await getClient();
+  if (!client.isAuthenticated) {
+    console.warn("[Twitch] Cannot create subscription: Not authenticated.");
+    return [];
+  }
   const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/events/twitch` : `https://${process.env.HOSTNAME}/events/twitch`;
   const sub = await client.createEventSubSubscription(
     'stream.online',
@@ -25,20 +29,32 @@ export const createOnlineSubscription = async (broadcasterId: string): Promise<E
 
 export const listTwitchSubscriptions = async (): Promise<EventSubSubscription[]> => {
   const client = await getClient();
-  const subs = await client.listEventSubSubscriptions();
-  return subs.data;
+  if (!client.isAuthenticated) {
+    console.warn("[Twitch] Cannot list subscriptions: Not authenticated.");
+    return [];
+  }
+  const { data: subs } = await client.listEventSubSubscriptions();
+  return subs || [];
 };
 
 export const deleteTwitchSubscription = async (subscriptionId: string): Promise<void> => {
   const client = await getClient();
+  if (!client.isAuthenticated) {
+    console.warn("[Twitch] Cannot delete subscription: Not authenticated.");
+    return;
+  }
   await client.deleteEventSubSubscription(subscriptionId);
 };
 
 export const deleteAllTwitchSubscriptions = async (): Promise<number> => {
   const client = await getClient();
-  const { data: existingSubscriptions } = await client.listEventSubSubscriptions();
-  if (existingSubscriptions && existingSubscriptions.length > 0) {
-    await Promise.all(existingSubscriptions.map(sub => client.deleteEventSubSubscription(sub.id)));
+  if (!client.isAuthenticated) {
+    console.warn("[Twitch] Cannot delete subscriptions: Not authenticated.");
+    return 0;
   }
-  return existingSubscriptions ? existingSubscriptions.length : 0;
+  const { data: subs } = await client.listEventSubSubscriptions();
+  if (subs && subs.length > 0) {
+    await Promise.all(subs.map(sub => client.deleteEventSubSubscription(sub.id)));
+  }
+  return subs ? subs.length : 0;
 };
