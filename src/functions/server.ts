@@ -9,8 +9,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// In-memory PKCE store for Kick OAuth
-const pkceStore = new Map<string, string>();
 
 // --- EXPRESS SERVER SETUP ---
 export const createServer = (): Express => {
@@ -19,6 +17,8 @@ export const createServer = (): Express => {
   app.use(express.raw({
     type: 'application/json'
   }));
+
+  app.use('/assets', express.static(path.join(__dirname, 'public')));
 
   // --- TWITCH EVENTSUB WEBHOOK ---
   app.post('/events/twitch', async (req: Request, res: Response) => {
@@ -113,72 +113,6 @@ export const createServer = (): Express => {
 
   app.get('/health', (req: Request, res: Response) => {
     res.status(200).send('OK');
-  });
-
-  // --- KICK OAUTH FLOW ---
-  app.get('/dashboard', (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, '../../public/dashboard.html'));
-  });
-
-  app.get('/login/kick', async (req: Request, res: Response) => {
-    const secret = req.query.secret as string;
-    if (!secret || secret !== process.env.OAUTH_DASHBOARD_SECRET) {
-      return res.status(401).send('Unauthorized: Invalid dashboard secret.');
-    }
-
-    const client = await KickApiClient.getInstance();
-    const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/callback/kick` : `https://${process.env.HOSTNAME}/callback/kick`;
-
-    const { url, codeVerifier, state } = client.generateAuthUrl(callbackUrl, 'events:subscribe user:read channel:read');
-
-    pkceStore.set(state, codeVerifier);
-
-    // Clear out stored state after 10 minutes to prevent memory leaks
-    setTimeout(() => pkceStore.delete(state), 10 * 60 * 1000);
-
-    res.redirect(url);
-  });
-
-  app.get('/callback/kick', async (req: Request, res: Response) => {
-    const code = req.query.code as string;
-    const state = req.query.state as string;
-    const error = req.query.error as string;
-
-    if (error) {
-      return res.status(400).send(`Auth Failed: ${error}`);
-    }
-
-    const codeVerifier = pkceStore.get(state);
-    if (!codeVerifier) {
-      return res.status(400).send('Auth Failed: Invalid or expired state parameter.');
-    }
-
-    pkceStore.delete(state);
-
-    try {
-      const client = await KickApiClient.getInstance();
-      const callbackUrl = process.env.NODE_ENV === 'development' ? `http://localhost:${process.env.PORT || 3000}/callback/kick` : `https://${process.env.HOSTNAME}/callback/kick`;
-
-      await client.exchangeCode(code, callbackUrl, codeVerifier);
-
-      // Verify user ID against allowlist
-      const userResponse = await client.makeApiRequest<{ data: any[] }>('users');
-      const userId = userResponse && userResponse.data && userResponse.data.length > 0 ? userResponse.data[0].user_id : null;
-
-      const allowlistStr = process.env.KICK_AUTH_ALLOWLIST || '';
-      const allowlist = allowlistStr.split(',').map(id => id.trim());
-
-      if (!userId || !allowlist.includes(userId.toString())) {
-        console.warn(`Unauthorized Kick ID ${userId} attempted login.`);
-        await client.revokeToken();
-        return res.status(403).send('Access Denied: Your Kick User ID is not on the allowlist.');
-      }
-
-      res.send('Kick Authentication Successful! You may close this tab.');
-    } catch (err: any) {
-      console.error('Kick Callback Error:', err);
-      res.status(500).send(`Auth Failed: ${err.message}`);
-    }
   });
 
   app.get('/', (req: Request, res: Response) => {
