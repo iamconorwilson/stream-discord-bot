@@ -1,4 +1,10 @@
-[
+{
+  "twitch": [
     "username1",
     "username2"
-]
+  ],
+  "kick": [
+    "username3",
+    "username4"
+  ]
+}
