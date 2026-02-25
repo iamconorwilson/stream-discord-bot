@@ -69,6 +69,10 @@ export class TwitchApiClient {
         return Date.now() > token.obtainmentTimestamp + expiresInMilliseconds;
     }
 
+    public get isAuthenticated(): boolean {
+        return this.appToken !== null && !this.isTokenExpired(this.appToken);
+    }
+
     private async getValidAccessToken(): Promise<string> {
         if (this.isTokenExpired(this.appToken)) {
             await this.fetchAppAccessToken();
