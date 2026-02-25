@@ -22,11 +22,11 @@
     "express": "^5.2.1"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.2",
+    "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
     "cross-env": "^10.1.0",
-    "eslint": "^10.0.2",
+    "eslint": "^10.0.1",
     "globals": "^17.3.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1"
