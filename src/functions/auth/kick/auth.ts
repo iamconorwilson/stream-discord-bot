@@ -210,6 +210,10 @@ export class KickApiClient {
     return Date.now() > token.obtainmentTimestamp + expiresInMilliseconds;
   }
 
+  public get isAuthenticated(): boolean {
+    return this.userToken !== null;
+  }
+
   private async getValidAccessToken(): Promise<string> {
     if (!this.userToken) {
       throw new Error("No Kick user token found. Please authenticate via the dashboard.");

@@ -37,12 +37,19 @@ let channels: ChannelsConfig = { twitch: [], kick: [] };
 if (process.env.NODE_ENV !== 'development') {
 
   // Clear existing subscriptions to avoid duplicates
-  await deleteAllSubscriptions().then((count) => {
+  try {
+    const count = await deleteAllSubscriptions();
     console.log(`Deleted ${count} existing Twitch subscriptions`);
-  });
-  await deleteAllKickSubscriptions().then((count) => {
+  } catch (err: any) {
+    console.warn(`Failed to delete existing Twitch subscriptions: ${err.message}`);
+  }
+
+  try {
+    const count = await deleteAllKickSubscriptions();
     console.log(`Deleted ${count} existing Kick subscriptions`);
-  });
+  } catch (err: any) {
+    console.warn(`Failed to delete existing Kick subscriptions: ${err.message}`);
+  }
 
   // Load channels from configuration file
   const dataDir = process.env.DATA_DIR || './data';
@@ -87,18 +94,26 @@ if (process.env.NODE_ENV !== 'development') {
 
 // List current subscriptions after a delay to ensure they are set up
 setTimeout(async () => {
-  const subs = await listSubscriptions();
-  console.log('Current Twitch subscriptions:', subs.length);
-  const expectedTwitchSubs = channels.twitch?.length || 0;
-  if (subs.length < expectedTwitchSubs && process.env.NODE_ENV !== 'development') {
-    console.warn('Warning: Some Twitch subscriptions may not have been created successfully.');
+  try {
+    const subs = await listSubscriptions();
+    console.log('Current Twitch subscriptions:', subs.length);
+    const expectedTwitchSubs = channels.twitch?.length || 0;
+    if (subs.length < expectedTwitchSubs && process.env.NODE_ENV !== 'development') {
+      console.warn('Warning: Some Twitch subscriptions may not have been created successfully.');
+    }
+  } catch (error: any) {
+    console.warn('Could not list Twitch subscriptions:', error.message);
   }
 
-  const kickSubs = await listKickSubscriptions();
-  console.log('Current Kick subscriptions:', kickSubs.length);
-  const expectedKickSubs = channels.kick?.length || 0;
-  if (kickSubs.length < expectedKickSubs && process.env.NODE_ENV !== 'development') {
-    console.warn('Warning: Some Kick subscriptions may not have been created successfully.');
+  try {
+    const kickSubs = await listKickSubscriptions();
+    console.log('Current Kick subscriptions:', kickSubs.length);
+    const expectedKickSubs = channels.kick?.length || 0;
+    if (kickSubs.length < expectedKickSubs && process.env.NODE_ENV !== 'development') {
+      console.warn('Warning: Some Kick subscriptions may not have been created successfully.');
+    }
+  } catch (error: any) {
+    console.warn('Could not list Kick subscriptions:', error.message);
   }
 }, 30000);
 

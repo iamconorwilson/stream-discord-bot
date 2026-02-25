@@ -162,9 +162,8 @@ export const createServer = (): Express => {
       await client.exchangeCode(code, callbackUrl, codeVerifier);
 
       // Verify user ID against allowlist
-      const userResponse = await client.makeApiRequest<any[]>('users');
-      // Assuming GET /users returns the authenticated user data payload
-      const userId = userResponse && userResponse.length > 0 ? userResponse[0].id : null;
+      const userResponse = await client.makeApiRequest<{ data: any[] }>('users');
+      const userId = userResponse && userResponse.data && userResponse.data.length > 0 ? userResponse.data[0].user_id : null;
 
       const allowlistStr = process.env.KICK_AUTH_ALLOWLIST || '';
       const allowlist = allowlistStr.split(',').map(id => id.trim());
