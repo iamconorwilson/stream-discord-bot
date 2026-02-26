@@ -115,9 +115,11 @@ export class KickApiClient {
   }
 
   private async fetchPublicKey(): Promise<void> {
-    console.log('[Kick] Fetching Kick Public Key...');
     const response = await fetch('https://api.kick.com/public/v1/public-key');
-    if (!response.ok) return;
+    if (!response.ok) {
+      console.error('[Kick] Failed to fetch Kick Public Key');
+      return;
+    }
     const text = await response.text();
     this.publicKey = text.trim();
   }

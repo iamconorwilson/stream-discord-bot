@@ -5,6 +5,7 @@ import { TwitchApiClient } from './auth/twitch/auth.js';
 import { KickApiClient } from './auth/kick/auth.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +19,7 @@ export const createServer = (): Express => {
     type: 'application/json'
   }));
 
-  app.use('/assets', express.static(path.join(__dirname, 'public')));
+  app.use('/assets', express.static(path.resolve(__dirname, '../../public')));
 
   // --- TWITCH EVENTSUB WEBHOOK ---
   app.post('/events/twitch', async (req: Request, res: Response) => {

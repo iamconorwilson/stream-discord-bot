@@ -26,7 +26,6 @@ export class TwitchApiClient {
 
     private constructor(config: TwitchApiConfig) {
         this.config = config;
-        console.log(TwitchApiClient.API_BASE_URL);
     }
 
     // --- SINGLETON INSTANCE ---
