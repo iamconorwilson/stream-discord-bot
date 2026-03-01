@@ -120,8 +120,16 @@ export class KickApiClient {
       console.error('[Kick] Failed to fetch Kick Public Key');
       return;
     }
-    const text = await response.text();
-    this.publicKey = text.trim();
+    try {
+      const json = await response.json();
+      if (json && json.data && json.data.public_key) {
+        this.publicKey = json.data.public_key.trim();
+      } else {
+        console.error('[Kick] Unexpected public key response format:', json);
+      }
+    } catch (err) {
+      console.error('[Kick] Error parsing public key response:', err);
+    }
   }
 
   public async makeApiRequest<T>(endpoint: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: object): Promise<T> {
