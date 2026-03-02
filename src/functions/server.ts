@@ -97,6 +97,9 @@ export const createServer = (): Express => {
         sendMessage('kick', broadcasterId.toString());
         return;
       }
+    } else if (eventType === 'livestream.status.updated' && body.is_live === false) {
+      // Stream offline, do nothing
+      return res.status(200).end();
     }
 
     console.log('[Kick] Received unhandled Kick EventSub message type:', eventType);
