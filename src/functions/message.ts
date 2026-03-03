@@ -42,9 +42,6 @@ const getKickStreamData = async (userId: string): Promise<NormalizedStreamData> 
   const channelResult = await client.getChannel(userId);
   const userResult = await client.getUser(userId);
 
-  console.log(JSON.stringify(channelResult, null, 2));
-  console.log(JSON.stringify(userResult, null, 2));
-
   if (!channelResult) {
     throw new Error(`Channel for user ID ${userId} not found.`);
   }
@@ -118,8 +115,7 @@ export const sendMessage = async (platform: Platform, userId: string) => {
   }
 
   if (platform === 'kick') {
-    console.log('Kick stream data:');
-    console.log(JSON.stringify(data, null, 2));
+    console.log(`[Kick] Stream thumbnail URL: ${data.streamThumbnail}`);
   }
 
   const message = {
