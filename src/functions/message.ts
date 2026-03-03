@@ -114,6 +114,10 @@ export const sendMessage = async (platform: Platform, userId: string) => {
     return;
   }
 
+  if (platform === 'kick') {
+    console.log(JSON.stringify(data, null, 2));
+  }
+
   const message = {
     content: `${data.username} just went live at ${data.streamUrl} !`,
     type: 'rich',
