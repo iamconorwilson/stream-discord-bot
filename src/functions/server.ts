@@ -106,6 +106,38 @@ export const createServer = (): Express => {
     return res.status(200).end();
   });
 
+  // --- PROXY ENDPOINTS ---
+  app.get('/proxy/kick/thumbnail', async (req: Request, res: Response) => {
+    const thumbnailUrl = req.query.url as string;
+
+    if (!thumbnailUrl) {
+      return res.status(400).send('Missing url parameter');
+    }
+
+    try {
+      const parsedUrl = new URL(thumbnailUrl);
+      if (parsedUrl.hostname !== 'images.kick.com') {
+        return res.status(400).send('Invalid domain');
+      }
+
+      const headResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
+
+      if (headResponse.ok) {
+        // Image is available, redirect with long cache (1 hour)
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.redirect(302, thumbnailUrl);
+      } else {
+        // Image might be 403, redirect to fallback with short cache (1 minute)
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        return res.redirect(302, '/assets/starting_soon.png');
+      }
+    } catch (error) {
+      console.error('Error proxying thumbnail:', error);
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      return res.redirect(302, '/assets/starting_soon.png');
+    }
+  });
+
   // --- HEALTH CHECK & ROOT ---
   app.get('/events/twitch', (req: Request, res: Response) => {
     res.status(200).send('Twitch EventSub endpoint is running.');

@@ -139,7 +139,9 @@ export const sendMessage = async (platform: Platform, userId: string) => {
         },
         url: `${data.streamUrl}`,
         image: {
-          url: `${data.streamThumbnail}`
+          url: platform === 'kick'
+            ? `https://${process.env.HOSTNAME}/proxy/kick/thumbnail?url=${encodeURIComponent(data.streamThumbnail)}`
+            : `${data.streamThumbnail}`
         },
         timestamp: new Date().toISOString(),
         color: platform === 'twitch' ? 9520895 : 5504024
